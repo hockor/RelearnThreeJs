@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Title</title>
+</head>
+<body>
+
+<script id="vert" type="x-shader/x-vertex">
+	// precision precision-qualifier type;
+	// precision可以用来确定默认精度修饰符。type可以是int或float或采样器类型，
+	// precision-qualifier可以是lowp, mediump, 或者highp
+
+	precision lowp float;
+	attribute vec3 v3Position;
+	attribute vec4 inColor;
+	varying vec4 outColor;
+
+	void main(void){
+		outColor = inColor;
+		gl_Position = vec4(v3Position, 1.0);
+
+	}
+
+</script>
+
+
+<script id="frag" type="x-shader/x-fragment">
+	precision lowp float;
+
+	varying vec4 outColor;
+	void main(void){
+		gl_FragColor = outColor;
+
+	}
+
+</script>
+<canvas id="mycanvas" width="500" height="500"></canvas>
+</body>
+</html>

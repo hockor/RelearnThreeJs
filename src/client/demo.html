@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<!--#include virtual="/global_include/config.html"-->
+	<title><!--#echo var='Title'--></title>
+	<meta name="keywords" content="<!--#echo var='Keywords'-->"/>
+	<meta name="description" content="<!--#echo var='Description'-->"/>
+	<meta name="renderer" content="webkit">
+	<meta name="renderer" content="webkit|ie-comp|ie-stand">
+	<meta http-equiv="x-dns-prefetch-control" content="on">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	<meta name="robots" content="all"/>
+	<meta name="author" content="网易，NetEase Inc."/>
+	<meta name="copyright" content="网易，NetEase Inc."/>
+	<meta name="front-end technicist" content="hockorTang">
+	<link rel="dns-prefetch" href="http://res.nie.netease.com">
+	<!--[if lt IE 9]>
+	<script src="https://nie.res.netease.com/comm/html5/html5shiv.js"></script>
+	<![endif]-->
+
+
+</head>
+<body>
+<div class="wrap">
+	<div id="app">
+		<canvas id="js-canvas">
+
+		</canvas>
+	</div>
+</div>
+
+<script id="vs" type="x-shader/x-vertex">
+
+	varying vec2 vUv;
+	void main() {
+		vec3 pos = position;
+		vUv = uv;
+		gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+	}
+
+</script>
+
+<script id="fs" type="x-shader/x-fragment">
+	uniform sampler2D tex;
+	varying vec2 vUv;
+	uniform vec2 resolution;
+	uniform float time;
+	uniform float imageOpacity;
+	uniform float invert;
+	uniform float gradationMap;
+	uniform float gradationStrength;
+	uniform float speedX;
+	uniform float speedY;
+	uniform vec3 bg1;
+	uniform vec3 bg2;
+	uniform vec3 bg3;
+	vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+	vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+	vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+	float snoise(vec2 v) {
+		const vec4 C = vec4(0.211324865405187, // (3.0-sqrt(3.0))/6.0
+		0.366025403784439, // 0.5*(sqrt(3.0)-1.0)
+		-0.577350269189626, // -1.0 + 2.0 * C.x
+		0.044390243902439);// 1.0 / 41.0
+		vec2 i  = floor(v + dot(v, C.yy));
+		vec2 x0 = v -   i + dot(i, C.xx);
+		vec2 i1;
+		i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+		vec4 x12 = x0.xyxy + C.xxzz;
+		x12.xy -= i1;
+		i = mod289(i);// Avoid truncation effects in permutation
+		vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+		+ i.x + vec3(0.0, i1.x, 1.0));
+		vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+		m = m*m;
+		m = m*m;
+		vec3 x = 2.0 * fract(p * C.www) - 1.0;
+		vec3 h = abs(x) - 0.5;
+		vec3 ox = floor(x + 0.5);
+		vec3 a0 = x - ox;
+		m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+		vec3 g;
+		g.x  = a0.x  * x0.x  + h.x  * x0.y;
+		g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+		return 130.0 * dot(m, g);
+	}
+	void main() {
+		vec2 st = gl_FragCoord.xy / resolution.xy;
+		st *= gradationMap;
+		float v = snoise(vec2(
+		(cos(st.x + cos(time * speedX) * 2.2) * 1.2 + cos(st.x + time * speedX * 0.64) * 0.72 + cos(st.x + time * speedX * 2.14) * 1.42) * 0.33333,
+		(sin(st.y + time * speedY * 2.2) * 1.2 + sin(st.y + sin(time * speedY) * 0.64) * 0.72 + sin(st.y + time * speedY * 2.14) * 1.42) * 0.33333
+		)) * gradationStrength;
+		v = snoise(vec2((cos(st.x + v + time * 2.2) * 1.2 + cos(st.x + v + cos(time) * 0.64) * 0.72 + cos(st.x + v + time * 2.14) * 1.42) * 0.33333, (sin(st.y + v + time * 2.2) * 1.2 + sin(st.y + v + time * 0.64) * 0.72 + sin(st.y + v + sin(time) * 2.14) * 1.42) * 0.33333)) * 0.5;
+		vec3 baseColor = mix(bg1, bg2, smoothstep(0.0, 0.9, v));
+		baseColor = mix(baseColor, bg3, smoothstep(0.3, 1.0, v));
+		vec3 negaColor = vec3(1.0) - baseColor;
+		baseColor = mix(baseColor, negaColor, invert);
+		vec4 texColor = texture2D(tex, vUv);
+		texColor.a = texColor.a * imageOpacity;
+		vec3 color = mix(baseColor.rgb, texColor.rgb, texColor.a);
+		gl_FragColor = vec4(color.rgb, 1.0);
+	}
+
+</script>
+<!-- jquery mix NIE (最新版本）-->
+<script src="https://nie.res.netease.com/comm/js/jquery(mixNIE).1.11.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/2.1.3/TweenLite.min.js"></script>
+</body>
+</html>
